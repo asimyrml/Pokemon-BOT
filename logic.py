@@ -1,5 +1,6 @@
 import aiohttp  # Eşzamansız HTTP istekleri için bir kütüphane
 import random
+import datetime
 
 class Pokemon:
     pokemons = {}
@@ -10,10 +11,21 @@ class Pokemon:
         self.name = None
         self.hp = random.randint(1, 100)  # Pokémon'un can puanı
         self.power = random.randint(1, 10)  # Pokémon'un gücü
+        self.last_feed_time = datetime.datetime.min
         if pokemon_trainer not in Pokemon.pokemons:
             Pokemon.pokemons[pokemon_trainer] = self
         else:
             self = Pokemon.pokemons[pokemon_trainer]
+
+    async def feed(self, feed_interval: int = 20, hp_increase:int = 10 ):
+        current_time = datetime.datetime.now()
+        delta_time = datetime.timedelta(hours=feed_interval)  
+        if (current_time - self.last_feed_time) > delta_time :
+            self.hp += hp_increase
+            self.last_feed_time = current_time 
+            return f"Pokémon sağlığı geri yüklenir. Mevcut HP: {self.hp}"
+        else:
+            return f"Pokémonunuzu şu zaman besleyebilirsiniz:{current_time + delta_time }"
 
     async def get_name(self):
         # PokeAPI aracılığıyla bir pokémonun adını almak için asenktron metot
@@ -63,6 +75,10 @@ class Wizard(Pokemon):
         else:
             enemy.hp = 0
             return f"Pokémon eğitmeni @{self.pokemon_trainer} @{enemy.pokemon_trainer}'ni yendi!"
+        
+    async def feed(self, feed_interval:int = 20, hp_increase:int = 10 ):
+        hp_increase = int(hp_increase * 1.5)  # Sihirbaz Pokémon'unun besleme gücünü artırma
+        return await super().feed(feed_interval, hp_increase)
 
 class Fighter(Pokemon):
     async def attack(self, enemy):
@@ -71,3 +87,8 @@ class Fighter(Pokemon):
         sonuc = await super().attack(enemy)  
         self.guc -= super_guc
         return sonuc + f"\nDövüşçü Pokémon süper saldırı kullandı. Eklenen güç: {super_guc}"
+
+    async def feed(self, feed_interval: int = 20, hp_increase: int = 10):
+        # Dövüşçüler için besleme aralığı yarıya düşer
+        shorter_interval = max(1, feed_interval // 2)
+        return await super().feed(shorter_interval, hp_increase)
